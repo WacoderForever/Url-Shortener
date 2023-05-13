@@ -9,7 +9,7 @@ struct CTextStack * render_main_interface(char *full_link,char *internal_link){
     s->open(s,HEAD);
         s->auto$close(s,LINK,R"(rel="stylesheet" href="/static/style.css")");
         s->open(s,TITLE);
-            s->segment_text(s,"KATTI");
+            s->segment_text(s,"KATTIT");
         s->close(s,TITLE);
 
     s->close(s,HEAD);
