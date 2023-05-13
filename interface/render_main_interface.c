@@ -3,7 +3,7 @@
 //
 
 
-struct CTextStack * render_main_interface(){
+struct CTextStack * render_main_interface(char *full_link,char *internal_link){
     struct CTextStack *s = newCTextStack(CTEXT_LINE_BREAKER, CTEXT_SEPARATOR);
     s->$open(s,HTML,"lang=\"en\"");
     s->open(s,HEAD);
@@ -29,7 +29,20 @@ struct CTextStack * render_main_interface(){
 
                 s->close(s,FORM);
 
+                if(full_link != NULL){
+                    s->open(s,H4);
+                         s->segment_text(s,"The Link is Avaliable in :");
+                    s->close(s,H4);
+
+                    s->$open(s,A,R"( href="%s"  )",internal_link);
+                        s->segment_text(s,full_link);
+                    s->close(s,A);
+                }
+
             s->close(s,DIV);
+
+
+
         s->close(s,BODY);
     s->close(s,HTML);
     return s;

@@ -28,9 +28,15 @@ button{
     color: rgb(255, 255, 255);
 }
 
-h3{
+h3,h4{
     margin-top: 2vh;
-    font-size: 5vh;
     color: gray;
     font-style: inherit;
+}
+h3{
+    font-size: 5vh;
+}
+h4{
+    font-size: 3vh;
+
 }
