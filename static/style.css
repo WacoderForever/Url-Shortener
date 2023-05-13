@@ -1,0 +1,36 @@
+
+input{
+    text-align: center;
+    width: 30vw;
+    height: 7vh;
+    border-radius: 5px;
+    margin-top: 2vh;
+    border: transparent;
+    background-color: rgb(235, 235, 235);
+    font-size: 3vh;
+}
+.center{
+    margin-top: 10vh;
+    margin-left: 0vw;
+    text-align: center;
+
+}
+button{
+
+    text-align: center;
+    width: 10vw;
+    height: 5vh;
+    border-radius: 5px;
+    margin-top: 1vh;
+    border: transparent;
+    background-color: rgb(36, 104, 231);
+    font-size: 4vh;
+    color: rgb(255, 255, 255);
+}
+
+h3{
+    margin-top: 2vh;
+    font-size: 5vh;
+    color: gray;
+    font-style: inherit;
+}
