@@ -34,7 +34,7 @@ struct CTextStack * render_main_interface(char *full_link,char *internal_link){
                          s->segment_text(s,"The Link is Avaliable in :");
                     s->close(s,H4);
 
-                    s->$open(s,A,R"( href="%s"  )",internal_link);
+                    s->$open(s,A,R"( href="%s" target="_blank" )",internal_link);
                         s->segment_text(s,full_link);
                     s->close(s,A);
                 }
