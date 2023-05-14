@@ -14,15 +14,16 @@ struct CwebHttpResponse *main_sever(struct CwebHttpRequest *request ){
     request->read_content(request,2000);
 
     char *route = request->route;
-
+    //when short is clicked
     if(strcmp(route,"/create_url") == 0) {
         return create_url(request);
     }
+    //when shorten ref is clicked
     if(strcmp(route,"/ref") == 0){
         return ref_route(request);
     }
 
-
+    //first page of web app
     return main_route();
 }
 
