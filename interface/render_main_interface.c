@@ -17,7 +17,7 @@ struct CTextStack * render_main_interface(char *full_link,char *internal_link){
         s->auto$close(s,BR,"");
             s->$open(s,DIV,R"(class="center")");
                 s->open(s,H3);
-                    s->segment_text(s,"Type The URL you want to Short");
+                    s->segment_text(s,"KATTIT URL SHORTENER");
                 s->close(s,H3);
                 s->$open(s,FORM,R"(action="/create_url" method="POST" )");
                 s->auto$close(s,INPUT,R"( name="url" placeholder="Enter url" )");
