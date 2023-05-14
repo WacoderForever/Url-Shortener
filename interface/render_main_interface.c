@@ -20,7 +20,7 @@ struct CTextStack * render_main_interface(char *full_link,char *internal_link){
                     s->segment_text(s,"Type The URL you want to Short");
                 s->close(s,H3);
                 s->$open(s,FORM,R"(action="/create_url" method="POST" )");
-                s->auto$close(s,INPUT,R"( name="url" placeholder='url' )");
+                s->auto$close(s,INPUT,R"( name="url" placeholder="Enter url" )");
                 s->auto$close(s,BR,"");
                 s->auto$close(s,BR,"");
                 s->open(s,BUTTON);
