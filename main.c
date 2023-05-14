@@ -18,7 +18,7 @@ struct CwebHttpResponse *main_sever(struct CwebHttpRequest *request ){
     if(strcmp(route,"/create_url") == 0) {
         return create_url(request);
     }
-    //when shorten ref is clicked
+    //when shorten ref link is clicked
     if(strcmp(route,"/ref") == 0){
         return ref_route(request);
     }
