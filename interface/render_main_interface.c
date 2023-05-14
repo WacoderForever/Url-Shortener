@@ -34,7 +34,6 @@ struct CTextStack * render_main_interface(char *full_link,char *internal_link){
 
                          s->segment_text(s,"The Link is Avaliable in :");
                     s->close(s,H4);
-                    s->auto$close(s,A,R"(rel="stylesheet" href="/static/favicon.ico")");
                     s->$open(s,A,R"( href="%s" target="_blank" )",internal_link);
                         s->segment_text(s,full_link);
                     s->close(s,A);
