@@ -36,12 +36,6 @@ struct CwebHttpResponse * get_informations(struct CwebHttpRequest *request){
     }
 
 
-    const char * formated_statistic_files = "data/statistc/";
-
-    struct DtwStringArray  *list = dtw_list_files(formated_statistic_files,true);
-
-
-
     char *usages = request->get_header(request,"usage");
 
     if(usages == NULL){
@@ -84,6 +78,60 @@ struct CwebHttpResponse * get_informations(struct CwebHttpRequest *request){
     }
 
 
-    return cweb_send_text("aaa",200);
+    //crete an array of jsons 
+    cJSON *json_array = cJSON_CreateArray();
+    const char * formated_statistic_files = "data/statistc/";
 
+    struct DtwStringArray  *list = dtw_list_files(formated_statistic_files,true);
+
+    cJSON *array =cJSON_CreateArray();
+    //implementing the filtrage
+    for(int i = 0; i< list->size;i++){
+        char *current = list->strings[i];
+        char *content = dtw_load_string_file_content(current);
+        cJSON *data = cJSON_Parse(content);
+
+        cJSON *used = cJSON_GetObjectItem(data,"used");
+
+        bool used_in_bool = used->valueint;
+
+        if(strcmp(usages,"used") ==0 && used_in_bool == false){
+            cJSON_Delete(data);
+            continue;
+        }
+        if(strcmp(usages,"unused") ==0 && used_in_bool == true){
+            cJSON_Delete(data);
+
+            continue;
+        }
+
+        //all its for everything
+
+        cJSON *creationg = cJSON_GetObjectItem(data,"created_at");
+        long creation_in_int = creationg->valueint;
+        if(creation_in_int  < lower_in_unix){
+            cJSON_Delete(data);
+
+            continue;
+        }
+        if(creation_in_int > higher_in_unix){
+            cJSON_Delete(data);
+
+            continue;
+        }
+
+        cJSON_DeleteItemFromObject(data,"created_at");
+        char *formated = dtw_convert_unix_time_to_string(creation_in_int);
+        cJSON_AddStringToObject(data,"created", formated);
+        cJSON_AddNumberToObject(data,"created_in_unix",creation_in_int);
+        free(formated);
+        cJSON_AddItemToArray(array,data);
+
+    }
+
+
+    char * string_return = cJSON_Print(array);
+    cJSON_Delete(array);
+
+    return cweb_send_text(string_return,200);
 }
