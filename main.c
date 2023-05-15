@@ -11,15 +11,11 @@
 #include "public_routes/create_url.c"
 #include "public_routes/ref_route.c"
 #include "api_routes/get_informations.c"
-
+#include "api_routes/delete_information.c"
 
 struct CwebHttpResponse *main_sever(struct CwebHttpRequest *request ){
     request->read_content(request,2000);
 
-    if(actual_request > 1){
-        request->free(request);
-        exit(0);
-    }
     char *route = request->route;
     //when short is clicked
     if(strcmp(route,"/create_url") == 0) {
@@ -34,8 +30,8 @@ struct CwebHttpResponse *main_sever(struct CwebHttpRequest *request ){
     if(strcmp(route,"/api/get_informations") == 0){
         return get_informations(request);
     }
-    if(strcmp(route,"/api/delete_informations") == 0){
-        return delete_informations(request);
+    if(strcmp(route,"/api/delete_information") == 0){
+        return delete_information(request);
     }
 
     //first page of web app
