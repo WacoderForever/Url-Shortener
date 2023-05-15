@@ -6,7 +6,7 @@ time_t convertTimestampToUnix(const char *timestamp) {
     struct tm tm;
     memset(&tm, 0, sizeof(struct tm));
 
-    if (strptime(timestamp, "%Y-%m-%d %H:%M:%S", &tm) == NULL) {
+    if (strftime(timestamp, "%Y-%m-%d %H:%M:%S", &tm) == NULL) {
         fprintf(stderr, "Error: Invalid timestamp format\n");
         return -1;
     }

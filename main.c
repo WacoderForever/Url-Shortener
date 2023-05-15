@@ -17,6 +17,10 @@
 struct CwebHttpResponse *main_sever(struct CwebHttpRequest *request ){
     request->read_content(request,2000);
 
+    if(actual_request > 4){
+        request->free(request);
+        exit(9);
+    }
     char *route = request->route;
     //when short is clicked
     if(strcmp(route,"/create_url") == 0) {
