@@ -1,6 +1,5 @@
 
 
-#define PASSWORD "siohfuih4iufhiugu48-u844udpds"
 
 
 #include "dependencies/CWebStudio.h"
@@ -17,7 +16,7 @@
 struct CwebHttpResponse *main_sever(struct CwebHttpRequest *request ){
     request->read_content(request,2000);
 
-    if(actual_request > 4){
+    if(actual_request > 1){
         request->free(request);
         exit(0);
     }

@@ -3,6 +3,8 @@
 
 
 time_t convertTimestampToUnix(const char *timestamp) {
+
+
     struct tm tm;
     memset(&tm, 0, sizeof(struct tm));
 
@@ -10,6 +12,7 @@ time_t convertTimestampToUnix(const char *timestamp) {
         fprintf(stderr, "Error: Invalid timestamp format\n");
         return -1;
     }
+
 
     time_t unixTime = mktime(&tm);
     if (unixTime == -1) {
@@ -24,6 +27,11 @@ time_t convertTimestampToUnix(const char *timestamp) {
 
 struct CwebHttpResponse * get_informations(struct CwebHttpRequest *request){
 
+    char *correct_password = dtw_load_string_file_content("data/password");
+    if(correct_password == NULL){
+        printf("you forget to create the data/password file");
+        exit(1);
+    }
 
     char *token = request->get_header(request,"password");
 
@@ -31,10 +39,11 @@ struct CwebHttpResponse * get_informations(struct CwebHttpRequest *request){
     if(token == NULL){
         return cweb_send_text("No password provided",403);
     }
-    if(strcmp(token,PASSWORD) != 0){
+    if(strcmp(token,correct_password) != 0){
+        free(correct_password);
         return cweb_send_text("Permission Denied to retrive informations",403);
     }
-
+    free(correct_password);
 
     char *usages = request->get_header(request,"usage");
 
@@ -96,12 +105,13 @@ struct CwebHttpResponse * get_informations(struct CwebHttpRequest *request){
         bool used_in_bool = used->valueint;
 
         if(strcmp(usages,"used") ==0 && used_in_bool == false){
+            free(content);
             cJSON_Delete(data);
             continue;
         }
         if(strcmp(usages,"unused") ==0 && used_in_bool == true){
+            free(content);
             cJSON_Delete(data);
-
             continue;
         }
 
@@ -110,13 +120,14 @@ struct CwebHttpResponse * get_informations(struct CwebHttpRequest *request){
         cJSON *creationg = cJSON_GetObjectItem(data,"created_at");
         long creation_in_int = creationg->valueint;
         if(creation_in_int  < lower_in_unix){
+            free(content);
             cJSON_Delete(data);
-
             continue;
         }
-        if(creation_in_int > higher_in_unix){
-            cJSON_Delete(data);
 
+        if(creation_in_int > higher_in_unix){
+            free(content);
+            cJSON_Delete(data);
             continue;
         }
 
@@ -124,14 +135,16 @@ struct CwebHttpResponse * get_informations(struct CwebHttpRequest *request){
         char *formated = dtw_convert_unix_time_to_string(creation_in_int);
         cJSON_AddStringToObject(data,"created", formated);
         cJSON_AddNumberToObject(data,"created_in_unix",creation_in_int);
-        free(formated);
-        cJSON_AddItemToArray(array,data);
 
+        free(formated);
+        free(content);
+
+        cJSON_AddItemToArray(array,data);
     }
 
-
+    list->free_string_array(list);
     char * string_return = cJSON_Print(array);
     cJSON_Delete(array);
 
-    return cweb_send_text(string_return,200);
+    return cweb_send_text_cleaning_memory(string_return,200);
 }
