@@ -62,7 +62,7 @@ char *create_randon_url_token(char *url){
             //get unix time from now 
             time_t now = time(NULL);
             cJSON_AddNumberToObject(json,"created_at",now);
-            cJSON_AddNumberToObject(json,"clicks",0);
+            cJSON_AddBoolToObject(json,"used",false);
             cJSON_AddStringToObject(json,"url",formated_url);            
 
 

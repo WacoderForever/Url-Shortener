@@ -25,14 +25,10 @@ struct CwebHttpResponse * ref_route(struct CwebHttpRequest *request){
 
     cJSON *json = cJSON_Parse(json_content);
     //increases the number of visits
-    cJSON *visits = cJSON_GetObjectItem(json,"clicks");
-    
-    int visits_int = visits->valueint;
-    visits_int++;
+    cJSON_DeleteItemFromObject(json,"used");
+     cJSON_AddBoolToObject(json,"used",true);
+        
 
-    cJSON_DeleteItemFromObject(json,"clicks");
-    cJSON_AddNumberToObject(json,"clicks",visits_int);
-    
 
     char *generated_json = cJSON_Print(json);
     
