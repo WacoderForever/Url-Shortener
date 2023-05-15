@@ -1,4 +1,12 @@
-
+body{
+      background-image: url('wallpaper.jpg');
+        background-repeat: no-repeat;
+        background-size: cover;
+        color: white;
+}
+a{
+    color: white;
+}
 input{
     text-align: center;
     text-decoration-color: black;
@@ -7,11 +15,14 @@ input{
     border-radius: 5px;
     margin-top: 2vh;
     border: transparent;
+    
+    color: grey;
+    opacity: 0.65;
     background-color: rgb(235, 235, 235);
     font-size: 3vh;
 }
 .center{
-    margin-top: 10vh;
+    margin-top: 20vh;
     margin-left: 0vw;
     text-align: center;
 
@@ -31,11 +42,11 @@ button{
 
 h3,h4{
     margin-top: 2vh;
-    color: gray;
+
     font-style: inherit;
 }
 h3{  
-    color:blue;
+
     font-size: 4vh;
     font-style:sans-serif;
 }
