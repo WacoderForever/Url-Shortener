@@ -65,6 +65,7 @@ char *create_randon_url_token(char *url){
             cJSON_AddNumberToObject(json,"clicks",0);
             cJSON_AddStringToObject(json,"url",formated_url);            
 
+
             char *json_string = cJSON_Print(json);
             dtw_write_string_file_content(formated_json_path,json_string);
             cJSON_Delete(json);
