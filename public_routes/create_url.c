@@ -22,8 +22,6 @@ struct CwebHttpResponse * create_url(struct CwebHttpRequest *request){
     char *host =request->get_header(request,"Host");
 
 
-
-
     char full_link[30];
     sprintf(full_link,"%s/ref?t=%s",host,token);
 
@@ -32,7 +30,7 @@ struct CwebHttpResponse * create_url(struct CwebHttpRequest *request){
     sprintf(internal_link,"/ref?t=%s",token);
 
     struct CTextStack *stack = render_main_interface(full_link,internal_link);
-
+    free(token);
     return cweb_send_rendered_CTextStack_cleaning_memory(
             stack,
             200

@@ -19,7 +19,7 @@ struct CwebHttpResponse *main_sever(struct CwebHttpRequest *request ){
 
     if(actual_request > 4){
         request->free(request);
-        exit(9);
+        exit(0);
     }
     char *route = request->route;
     //when short is clicked
