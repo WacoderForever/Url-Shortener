@@ -34,7 +34,9 @@ struct CwebHttpResponse *main_sever(struct CwebHttpRequest *request ){
     if(strcmp(route,"/api/get_informations") == 0){
         return get_informations(request);
     }
-
+    if(strcmp(route,"/api/delete_informations") == 0){
+        return delete_informations(request);
+    }
 
     //first page of web app
     return main_route();

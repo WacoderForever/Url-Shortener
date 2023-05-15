@@ -67,12 +67,12 @@ struct CwebHttpResponse * delete_information(struct CwebHttpRequest *request){
 
 
     //crete an array of jsons 
-    cJSON *json_array = cJSON_CreateArray();
+ 
     const char * formated_statistic_files = "data/statistc/";
 
     struct DtwStringArray  *list = dtw_list_files(formated_statistic_files,true);
 
-    cJSON *array =cJSON_CreateArray();
+    
     //implementing the filtrage
     for(int i = 0; i< list->size;i++){
         char *current = list->strings[i];
@@ -123,8 +123,7 @@ struct CwebHttpResponse * delete_information(struct CwebHttpRequest *request){
     }
 
     list->free_string_array(list);
-    char * string_return = cJSON_Print(array);
-    cJSON_Delete(array);
-
-    return cweb_send_text_cleaning_memory(string_return,200);
+   
+   
+    return cweb_send_text("all information were deleted",200);
 }
