@@ -9,6 +9,14 @@ struct CwebHttpResponse * create_url(struct CwebHttpRequest *request){
 
     char *url = request->get_param(request,"url");
 
+    if(url == NULL){
+        struct CTextStack *stack = render_main_interface(NULL,NULL);
+
+        return cweb_send_rendered_CTextStack_cleaning_memory(
+                stack,
+                200
+        );
+    }
     char *token = create_randon_url_token(url);
 
     char *host =request->get_header(request,"Host");
