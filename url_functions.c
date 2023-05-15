@@ -63,8 +63,8 @@ char *create_randon_url_token(char *url){
             time_t now = time(NULL);
             cJSON_AddNumberToObject(json,"created_at",now);
             cJSON_AddBoolToObject(json,"used",false);
-            cJSON_AddStringToObject(json,"url",formated_url);            
-
+            cJSON_AddStringToObject(json,"url",formated_url);
+            cJSON_AddStringToObject(json,"token",token);
 
             char *json_string = cJSON_Print(json);
             dtw_write_string_file_content(formated_json_path,json_string);

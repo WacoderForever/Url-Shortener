@@ -1,5 +1,7 @@
 
 
+#define PASSWORD "siohfuih4iufhiugu48-u844udpds"
+
 
 #include "dependencies/CWebStudio.h"
 #include "dependencies/doTheWorld.h"
@@ -9,6 +11,7 @@
 #include "public_routes/main_route.c"
 #include "public_routes/create_url.c"
 #include "public_routes/ref_route.c"
+#include "api_routes/get_informations.c"
 
 
 struct CwebHttpResponse *main_sever(struct CwebHttpRequest *request ){
@@ -23,6 +26,12 @@ struct CwebHttpResponse *main_sever(struct CwebHttpRequest *request ){
     if(strcmp(route,"/ref") == 0){
         return ref_route(request);
     }
+
+
+    if(strcmp(route,"/api/get_informations") == 0){
+        return get_informations(request);
+    }
+
 
     //first page of web app
     return main_route();
