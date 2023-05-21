@@ -10,7 +10,6 @@ int main() {
     
      printf("Enter the password: \n");
      scanf("%s",password);
-     #define PASSWORD password
      struct CwebSever *sever = newCwebSever(80,main_sever);
      sever->start(sever);
      sever->free(sever);
