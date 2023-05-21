@@ -1,3 +1,4 @@
+#define PASSWORD "asasoaksoaosaosk"
 #include "sever.c"
 
 

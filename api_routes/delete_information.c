@@ -6,24 +6,17 @@
 
 struct CwebHttpResponse * delete_information(struct CwebHttpRequest *request){
 
-    char *correct_password = dtw_load_string_file_content("data/password");
-    if(correct_password == NULL){
-        printf("you forget to create the data/password file");
-        exit(1);
-    }
-
+  
     char *token = request->get_header(request,"password");
 
 
     if(token == NULL){
         return cweb_send_text("No password provided",403);
     }
-    if(strcmp(token,correct_password) != 0){
-        free(correct_password);
+    if(strcmp(token,PASSWORD) != 0){
         return cweb_send_text("Permission Denied to retrive informations",403);
     }
-    free(correct_password);
-
+    
     char *usages = request->get_header(request,"usage");
 
     if(usages == NULL){
