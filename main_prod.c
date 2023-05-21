@@ -6,7 +6,8 @@
 int main() {
 
      //retrive the furst argument
-     char password[100];
+    
+    
      printf("Enter the password: \n");
      scanf("%s",password);
      #define PASSWORD password
