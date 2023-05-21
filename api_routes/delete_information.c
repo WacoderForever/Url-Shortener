@@ -13,7 +13,8 @@ struct CwebHttpResponse * delete_information(struct CwebHttpRequest *request){
     if(token == NULL){
         return cweb_send_text("No password provided",403);
     }
-    if(strcmp(token,PASSWORD) != 0){
+    
+    if(strcmp(token,password) != 0){
         return cweb_send_text("Permission Denied to retrive informations",403);
     }
     

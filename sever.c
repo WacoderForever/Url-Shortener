@@ -2,6 +2,7 @@
 
 
 
+char password[100];
 #include "dependencies/CWebStudio.h"
 #include "dependencies/doTheWorld.h"
 #include "url_functions.c"
@@ -12,6 +13,7 @@
 #include "public_routes/ref_route.c"
 #include "api_routes/get_informations.c"
 #include "api_routes/delete_information.c"
+
 
 struct CwebHttpResponse *main_sever(struct CwebHttpRequest *request ){
     request->read_content(request,2000);
