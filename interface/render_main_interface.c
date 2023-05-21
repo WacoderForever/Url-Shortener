@@ -7,10 +7,14 @@ struct CTextStack * render_main_interface(char *full_link,char *internal_link){
     struct CTextStack *s = newCTextStack(CTEXT_LINE_BREAKER, CTEXT_SEPARATOR);
     s->$open(s,HTML,"lang=\"en\"");
     s->open(s,HEAD);
-        s->auto$close(s,LINK,R"(rel="stylesheet" href="/static/style.css")");
-        s->open(s,TITLE);
-            s->segment_text(s,"KATTIT");
-        s->close(s,TITLE);
+        char *fav_icon_link = smart_static_ref("favicon.ico");
+        s->auto$close(s,LINK,"rel=\"shortcut icon\" href=\"%s\"",fav_icon_link);
+        free(fav_icon_link);
+
+        char *style = smart_static_ref("style.css");
+        s->auto$close(s,LINK,"rel=\"stylesheet\" href=\"%s\"",style);
+        free(style);
+                
 
     s->close(s,HEAD);
         s->open(s,BODY);

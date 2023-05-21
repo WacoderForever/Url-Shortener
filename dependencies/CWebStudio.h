@@ -24,6 +24,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 */
+
 #ifndef __CWEBSTUDIO_H
 #define __CWEBSTUDIO_H
 
@@ -35,6 +36,7 @@ SOFTWARE.
 #include <string.h>
 #include <sys/socket.h>
 #include <signal.h>
+#include <sys/resource.h>
 
 
 #include <arpa/inet.h>
@@ -171,8 +173,9 @@ struct CTextStack{
 
     void (*close)(struct CTextStack *self, const char *tag);
 
-
     void (*free)(struct CTextStack *self);
+
+    void (*restart)(struct CTextStack *self);
 
 };
 
@@ -207,6 +210,7 @@ void ctext_close(struct CTextStack *self, const char *tag);
 
 void ctext_free(struct CTextStack *self);
 
+void ctext_restart(struct CTextStack *self);
 void private_ctext_generate_formated_text(
     struct CTextStack *stack,
     const char *format,
@@ -235,8 +239,10 @@ struct CTextStack * newCTextStack(const char *line_breaker, const char *separato
     self->open = ctext_open;
     self->close = ctext_close;
     self->free =  ctext_free;
+    self->restart = ctext_restart;
     return self;
 }
+
 
 void ctext_free(struct CTextStack *self){
     free(self->line_breaker);
@@ -245,14 +251,23 @@ void ctext_free(struct CTextStack *self){
     free(self);
 }
 
+void ctext_restart(struct CTextStack *self){
+    free(self->rendered_text);
+    self->rendered_text = (char*)malloc(2);
+    strcpy(self->rendered_text,"\0");
+    self->rendered_text_alocation_size = 2;
+    self->rendered_text_size = 0;
+    self->ident_level = 0;
+}
 void private_ctext_text_double_size_if_reachs(struct CTextStack *self){
     
-    if(self->rendered_text_size >= (self->rendered_text_alocation_size-2)){
+
+    while(self->rendered_text_size >= (self->rendered_text_alocation_size-2)){
       
         self->rendered_text_alocation_size  =  (self->rendered_text_alocation_size  * 2)+2;
         self->rendered_text = (char*)(realloc(
             self->rendered_text,self->rendered_text_alocation_size
-     ));
+        ));
 
     }
 }
@@ -4148,22 +4163,22 @@ void private_cweb_represent_http_request(struct CwebHttpRequest *self);
 
 
 
+char * smart_static_ref(const char *path);
+
+char * private_cweb_change_smart_cache(const char *content);
+
 struct CwebHttpResponse * private_cweb_treat_five_icon(struct CwebHttpRequest *request);
 
-struct CwebHttpResponse * private_cweb_generate_static_response(struct CwebHttpRequest *request);
+struct CwebHttpResponse * private_cweb_generate_static_response(struct CwebHttpRequest *request,bool use_cache);
 
-static long long  actual_request = 0;
-
-#define CWEB_DEFAULT_TIMEOUT 2
-
-#define CWEB_DANGEROUS_SINGLE_PROCESS true
-#define CWEB_SAFTY_MODE false
 
 
 
 void  private_cweb_execute_request(
     int socket,
-    struct CwebHttpResponse*(*request_handler)( struct CwebHttpRequest *request)
+    struct CwebHttpResponse*(*request_handler)( struct CwebHttpRequest *request),
+    bool use_static,
+    bool use_cache
 );
 
 void private_cweb_send_error_mensage( const char*mensage,int status_code, int socket);
@@ -4172,21 +4187,86 @@ void private_cweb_send_error_mensage( const char*mensage,int status_code, int so
 void private_cweb_treat_response(int new_socket);
 
 
+
+
 void private_cweb_execute_request_in_safty_mode(
     int new_socket,
-    int time_out,
-    struct CwebHttpResponse *(*request_handler)(struct CwebHttpRequest *request)
+    int function_timeout,
+    struct CwebHttpResponse *(*request_handler)(struct CwebHttpRequest *request),
+    bool use_static,
+    bool use_cache
 );
 
-void cweb_run_server(
-    int port,
-    struct CwebHttpResponse*(*request_handler)( struct CwebHttpRequest *request),
-            int timeout,
-            bool single_process
+
+
+void private_cweb_handle_child_termination(int signal);
+
+
+
+void private_cweb_run_server_in_multiprocess(
+        int port,
+        struct CwebHttpResponse *(*request_handler)(struct CwebHttpRequest *request),
+        int function_timeout,
+        double client_timeout,
+        int max_queue,
+        long max_requests,
+        bool use_static,
+        bool use_cache
 );
+
+
+
+void private_cweb_run_server_in_single_process(
+        int port,
+        struct CwebHttpResponse *(*request_handler)(struct CwebHttpRequest *request),
+        double client_timeout,
+        int  max_queue,
+        bool use_static,
+        bool use_cache
+);
+
+
+
+
+
+static long long  actual_request = 0;
+static long total_requests = 0;
+
+#define CWEB_DANGEROUS_SINGLE_PROCESS true
+#define CWEB_NO_STATIC false;
+
+ struct CwebSever{
+    int port;
+    int function_timeout;
+    double client_timeout;
+    int max_queue;
+    bool single_process;
+    long max_requests;
+    
+    bool use_static;
+
+    bool use_cache;
+
+    //methods
+    struct CwebHttpResponse *(*request_handler)(struct CwebHttpRequest *request);
+    void (*start)(struct  CwebSever *self);
+    void (*free)(struct  CwebSever *self);
+};
+
+
+
+
+struct CwebSever *newCwebSever(int port , struct CwebHttpResponse *(*request_handler)(struct CwebHttpRequest *request));
+void private_cweb_run_sever(struct  CwebSever *self);
+void private_cweb_free_sever(struct CwebSever *self);
+
+
+
 #define CWEB_START_MACRO(port, caller)\
 int main() {\
-cweb_run_server((port), (caller),CWEB_DEFAULT_TIMEOUT,CWEB_SAFTY_MODE);\
+     struct CwebSever *sever = newCwebSever(port, caller);\
+     sever->start(sever);\
+     sever->free(sever);\
 return 0;\
 }
 
@@ -4278,6 +4358,7 @@ char* cweb_replace_string(const char *target, const char *old_element, const cha
     }
     return result;
 }
+
 
 
 
@@ -4377,6 +4458,10 @@ const char *cweb_generate_content_type(const char *file_name){
         else if(strcmp(extension, "png") == 0){
             strcpy(content_type_created, "image/png");
         }
+        else if(strcmp(extension, "ico") == 0){
+            strcpy(content_type_created, "image/x-icon");
+        }
+
         else if(strcmp(extension, "jpg") == 0){
             strcpy(content_type_created, "image/jpeg");
         }
@@ -4760,24 +4845,27 @@ int private_cweb_interpret_headders(struct CwebHttpRequest *self,struct CwebStri
         bool key_found = false;
         int value_start_point = 0;
 
-
-        for(int j = 0; j<line_size;j++){
-            
+        for(int j = 0; j<line_size;j++){            
             if(current_line[j] == ':' && key_found == false){
+
                 key_found = true;
                 j+=1;
                 value_start_point = j;
                 continue;
+            
             }
+
 
             if(key_found == false){
                 key[j] = current_line[j];
             }
 
+
             if(key_found == true){
                 int size_point = j - value_start_point -1;
                value[size_point] = current_line[j];
             }
+
         }
 
         if(key_found){
@@ -4798,17 +4886,14 @@ int  private_cweb_parse_http_request(struct CwebHttpRequest *self){
     unsigned char raw_entries[20000] ={0};
 
     int i = 0;
-
     while (true) {
 
         if (i >= 20000) {
-            printf("Tamanho de i: %i\n", i);
             return MAX_HEADER_SIZE;
         }
 
         ssize_t res = recv(self->socket, &raw_entries[i], 1, MSG_WAITALL);
- 
-     
+        
         if (res <= 0) {
             break;
         }
@@ -4817,14 +4902,14 @@ int  private_cweb_parse_http_request(struct CwebHttpRequest *self){
             raw_entries[i - 3] == '\r' &&
             raw_entries[i - 2] == '\n' &&
             raw_entries[i - 1] == '\r' &&
-                raw_entries[i] == '\n') {
-     
+                raw_entries[i] == '\n'
+           ){
+            
             break;
         }
         i++;
     
     }
-
     if(i == 0){    
         return READ_ERROR;
         
@@ -4881,7 +4966,6 @@ int  private_cweb_parse_http_request(struct CwebHttpRequest *self){
 
     return 0;
 }
-
 
 
 
@@ -4953,10 +5037,9 @@ struct CwebHttpResponse* cweb_send_file(const char *file_path,const char *conten
 
     cweb_print("Writen size: %i\n",size);
     if(content == NULL){
-        char *mensage = (char*)malloc(100);
+        char mensage[100];
         sprintf(mensage, "File not found: %s", file_path);
         struct CwebHttpResponse* response =  cweb_send_text(mensage, CWEB_NOT_FOUND);
-        free(mensage);
         return response;
     }
 
@@ -5139,7 +5222,7 @@ struct CwebHttpResponse *create_http_response(){
     self->set_content = private_cweb_http_set_content;
     self->generate_response = private_cweb_generate_response;
     self->add_header = private_cweb_http_add_header;
-    self->add_header(self, "Connection", "close");
+    //self->add_header(self, "connection", "close");
     
     return self;
 }
@@ -5185,47 +5268,102 @@ void private_cweb_http_set_content(struct CwebHttpResponse *self, unsigned char 
 void private_cweb_http_add_header(struct CwebHttpResponse *self,const char *key,const  char *value){
     self->headers->set(self->headers, key, value);
 }
+char * smart_static_ref(const char *path){
+    char file_name[1000];
+    sprintf(file_name,"static/%s",path);
+    struct stat file_stat;
+    long last_mofication = 0;
+    if (stat(file_name, &file_stat) == 0) {
+        last_mofication = file_stat.st_mtime;
+    }
+
+    char * src_ref = (char*)malloc(2000);
+    sprintf(src_ref,"/static?path=%s&unix-cache=%li",file_name, last_mofication);
+    return src_ref;
+}
+
+char * private_cweb_change_smart_cache(const char *content){
+
+    struct CTextStack *code = newCTextStack("","");
+    struct CTextStack *buffer_pattern = newCTextStack("","");
+    struct CTextStack *src = newCTextStack("","");
+
+    unsigned long content_size = strlen(content);
+    const char *entry_pattern = "smart-cache='";
+    unsigned long entry_pattern_len = strlen(entry_pattern);
+
+    int entry_founds = 0;
+    bool found_entry = false;
+
+    for(int i = 0; i < content_size; i++){
+
+        char current = content[i];
+        buffer_pattern->format(buffer_pattern,"%c",current);
+
+        if(found_entry){
+
+            //means its cancel the operation
+            if( current == '\n' || current =='"'){
+                code->text(code,buffer_pattern->rendered_text);
+                buffer_pattern->restart(buffer_pattern);
+                src->restart(src);
+                found_entry = false;
+                entry_founds = 0;
+                continue;
+            }
+
+            //means its getts the src
+            if(current != '\''){
+                src->format(src,"%c",current);
+                continue;
+            }
+
+            char *content = smart_static_ref(src->rendered_text);
+            code->text(code,content);
+            free(content);
+
+
+            buffer_pattern->restart(buffer_pattern);
+            src->restart(src);
+            found_entry = false;
+            entry_founds = 0;
+            continue;
+
+
+        }
+
+        if(entry_founds +1  == entry_pattern_len){
+            found_entry = true;
+            continue;
+        }
+
+        if(current == entry_pattern[entry_founds]){
+            entry_founds+=1;
+            continue;
+        }
+
+        //means didnt get the  pattern
+        code->text(code,buffer_pattern->rendered_text);
+        buffer_pattern->restart(buffer_pattern);
+        entry_founds = 0;
+
+    }
+
+    return code->rendered_text;
+}
+
 struct CwebHttpResponse * private_cweb_treat_five_icon(struct CwebHttpRequest *request){
 
     if(strcmp(request->route,"/favicon.ico")== 0){
-
-        int size = 0;
-        unsigned char *content;
-        bool content_found = false;
-        struct CwebHttpResponse * response;
-        content = cweb_load_binary_content("static/favicon.ico", &size);
-        if(content != NULL){
-            response = cweb_send_any_cleaning_memory("image/x-icon",size,content, 200);
-            content_found = true;
-        }
-
-        content = cweb_load_binary_content("static/favicon.png", &size);
-        if(content != NULL){
-            response = cweb_send_any_cleaning_memory("image/x-icon",size,content, 200);
-            content_found = true;
-        }
-
-
-        content = cweb_load_binary_content("static/favicon.jpg", &size);
-        if(content != NULL){
-             response =  cweb_send_any_cleaning_memory("image/x-icon",size,content, 200);
-            content_found = true;
-        }
-
-        if(!content_found){
-              return cweb_send_text("",404);
-        }
-        #ifndef CWEB_NO_CACHE
-                response->add_header(response,"Cache-Control:", "public, max-age=31536000");
-        #endif
-        return response;
+        
+        return  cweb_send_text("",404);
       
 
     }
     return NULL;
 }
 
-struct CwebHttpResponse * private_cweb_generate_static_response(struct CwebHttpRequest *request){
+struct CwebHttpResponse * private_cweb_generate_static_response(struct CwebHttpRequest *request,bool use_cache){
 
     struct CwebHttpResponse * icon_response = private_cweb_treat_five_icon(request);
 
@@ -5244,25 +5382,59 @@ struct CwebHttpResponse * private_cweb_generate_static_response(struct CwebHttpR
         }
 
         char *securyt_path = cweb_replace_string(full_path,"../","");
+        int size;
+        bool is_binary;
+        unsigned char *content = cweb_load_any_content(securyt_path,&size,&is_binary);
+
+        if(content == NULL){
 
 
-            
-        struct CwebHttpResponse * response = cweb_send_file(securyt_path,CWEB_AUTO_SET_CONTENT,200);
-        #ifndef CWEB_NO_CACHE
-            response->add_header(response,"Cache-Control:", "public, max-age=31536000");
-        #endif
-            free(securyt_path);
+            char *not_found_html_page = cweb_load_string_file_content("static/404.html");
+            if(not_found_html_page != NULL){
+                return cweb_send_var_html_cleaning_memory(not_found_html_page,404);
+
+            }
+
+            char mensage[100];
+            sprintf(mensage, "File not found: %s", securyt_path);
+            struct CwebHttpResponse* response =  cweb_send_text(mensage, CWEB_NOT_FOUND);
+            return response;
+        }
+
+        if(!is_binary){
+            char *new_content = private_cweb_change_smart_cache((char*)content);
+            free(content);
+            size = strlen(new_content);
+            content = (unsigned char*)new_content;
+        }
+
+        char *content_type  = (char*)cweb_generate_content_type(securyt_path);
+
+        struct CwebHttpResponse * response = cweb_send_any_cleaning_memory(content_type,size,content,200);
+
+
+        if(use_cache){
+            char *unix_cache = request->get_param(request,"unix-cache");
+            if(unix_cache){
+                char response_code[50] = "";
+                sprintf(response_code, "public, max-age=31536000, immutable");
+                response->add_header(response,"cache-control", response_code);
+            }
+        }
+
+        free(securyt_path);
         return response;
+
     }
     return NULL;
-
-
 
 }
 
 void private_cweb_execute_request(
     int socket,
-    struct CwebHttpResponse *(*request_handler)(struct CwebHttpRequest *request)
+    struct CwebHttpResponse *(*request_handler)(struct CwebHttpRequest *request),
+    bool use_static,
+    bool use_cache
     ){
     cweb_print("Parsing Request\n");
     struct CwebHttpRequest *request = cweb_request_constructor(socket);
@@ -5293,23 +5465,25 @@ void private_cweb_execute_request(
 
 
     struct CwebHttpResponse *response;
-    #ifndef CWEB_NO_STATIC
-        response = private_cweb_generate_static_response(request);
+    if(use_static){
+        response = private_cweb_generate_static_response(request,use_cache);
         if(response == NULL){
             response = request_handler(request);
         }
-    #else
+    }
+
+    else{
         response = request_handler(request);
-    #endif
+
+    }
 
     cweb_print("executed client lambda\n");
-    //clear buffer of the socket
+
 
     //means that the main function respond nothing
     if (response == NULL){
 
-        #ifndef CWEB_NO_STATIC
-
+        if(use_static){
             char *formated_html = cweb_load_string_file_content("static/404.html");
             if(formated_html != NULL){
                 response = cweb_send_var_html_cleaning_memory(
@@ -5322,15 +5496,14 @@ void private_cweb_execute_request(
                         404
                 );
             }
-
-        #else
-
+        }
+        else{
             response = cweb_send_text(
                     "Error 404",
                     404
             );
 
-        #endif
+        }
 
 
     }
@@ -5338,10 +5511,14 @@ void private_cweb_execute_request(
     char *response_str = response->generate_response(response);
     cweb_print("Response created\n");
 
+
+    
+    
+
     send(socket, response_str, strlen(response_str), MSG_NOSIGNAL);
 
 
-    //envia todo o content de uma vez 
+
 
     // Enviando conteúdo byte a byte
     if (response->exist_content)
@@ -5359,6 +5536,7 @@ void private_cweb_execute_request(
             sent += res;
         }
     }
+
     
     free(response_str);
     response->free(response);
@@ -5369,37 +5547,147 @@ void private_cweb_execute_request(
 
 void private_cweb_send_error_mensage( const char*mensage,int status_code, int socket)
 {
-    struct CwebHttpResponse *response;
-    #ifndef CWEB_NO_STATIC
-        char code_file[30];
-        sprintf(code_file,"static/%d.html",status_code);
-        char *error_html = cweb_load_string_file_content(code_file);
-        if(error_html != NULL){
-                response = cweb_send_var_html_cleaning_memory(error_html,status_code);
-        }
-        else{
-            response = cweb_send_text(mensage,status_code);
-        }
-    #else
-        response = cweb_send_text(mensage,status_code);
-    #endif
-
+    struct CwebHttpResponse *response = cweb_send_text(mensage,status_code);
     char *response_str = response->generate_response(response);
     send(socket, response_str, strlen(response_str), 0);
     send(socket, response->content, response->content_length, 0);
 
-
-    response->free(response);
     free(response_str);
 
 }
 
 
+
+void private_cweb_run_server_in_single_process(
+    int port,
+    struct CwebHttpResponse *(*request_handler)(struct CwebHttpRequest *request),
+    double client_timeout,
+    int max_queue,
+    bool use_static,
+    bool use_cache
+){
+
+    int port_socket;
+
+    // Creating socket file descriptor
+    if ((port_socket = socket(AF_INET, SOCK_STREAM, 0)) == 0)
+    {
+        perror("Faluire to create socket");
+        exit(EXIT_FAILURE);
+    }
+    
+    struct sockaddr_in address;
+    int addrlen = sizeof(address);
+
+    // Configurando a estrutura de endereço do servidor
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(port);
+
+    // Vinculando o socket à porta especificada
+    if (bind(port_socket, (struct sockaddr *)&address, sizeof(address)) < 0)
+    {
+        printf("Faluire to bind socket to port %d\n", port);
+        return;
+      
+    }
+
+    // Waiting for connections
+    if (listen(port_socket, max_queue) < 0)
+    {
+        perror("Faluire to listen connections");
+        exit(EXIT_FAILURE);
+    }
+
+    // Main loop
+    printf("Sever is running on port:%d\n", port);
+
+
+
+
+
+
+
+
+    while (1)
+    {
+
+        #ifdef  CWEB_BREAK_IN 
+                if(actual_request >= CWEB_BREAK_IN){
+                    cweb_print("Break in request %lld\n", actual_request);
+                    break;
+                }
+        #endif
+        actual_request++;
+
+        //clear every trash 
+
+        // Accepting a new connection in every socket
+        int client_socket = accept(
+            port_socket,
+            (struct sockaddr *)&address,
+            (socklen_t *)&addrlen
+        );
+
+
+
+        cweb_print("----------------------------------------\n");
+        cweb_print("Executing request:%lld\n", actual_request);
+        cweb_print("Socket: %d\n", client_socket);
+
+
+        if ( client_socket< 0){
+            perror("Faluire to accept connection");
+            exit(EXIT_FAILURE);
+        }
+        
+        struct timeval timer1;
+        timer1.tv_sec =  0;
+        timer1.tv_usec =  0100000;
+        setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, &timer1, sizeof(timer1));
+
+
+        char buffer[1];
+        ssize_t peek_result = recv(client_socket, buffer, 1, MSG_PEEK);
+
+        if (peek_result <= 0) {
+            cweb_print("peek: %li\n",peek_result);
+            cweb_print("Conection closed By the  Client\n");
+            close(client_socket);  // Fechar o socket do cliente
+            continue;
+        }
+        
+        
+        struct timeval timer2;
+        long seconds =  (long)client_timeout;
+        timer2.tv_sec =  seconds ;  // tempo em segundos
+        timer2.tv_usec =(long)((client_timeout - seconds) * 1000000);
+        setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, &timer2, sizeof(timer2));
+
+
+
+    
+        private_cweb_execute_request(client_socket,request_handler,use_static,use_cache);
+
+
+        close(client_socket);
+
+
+        cweb_print("Closed Conection with socket %d\n", client_socket);
+
+        
+    }
+    return; 
+}
+
+
+
 void private_cweb_treat_response(int new_socket){
     cweb_print("New request %lld\n", actual_request);
     cweb_print("Waiting for child process\n");
+    pid_t wpid;
     int status = 0;
-    while (wait(&status) > 0);
+    while (wpid = wait(&status) > 0);
 
     if (WIFEXITED(status)){
         cweb_print("Sucess\n");
@@ -5410,9 +5698,7 @@ void private_cweb_treat_response(int new_socket){
     if (pid_error == 0){
         cweb_print("Sending error mensage\n");
         alarm(2);
-
         private_cweb_send_error_mensage("Internal Sever Error",500,new_socket);
-
         alarm(0);
         exit(0);
     }
@@ -5422,9 +5708,10 @@ void private_cweb_treat_response(int new_socket){
                 exit(EXIT_FAILURE);
     }
     else{
+        pid_t wpid2;
         int status2 = 0;
         /// Wait for the child process to finish
-        while (wait(&status2) > 0);
+        while (wpid2 = wait(&status2) > 0);
         if (WIFEXITED(status2)){
             cweb_print("Mensage sent\n");
         }
@@ -5439,21 +5726,22 @@ void private_cweb_treat_response(int new_socket){
 
 void private_cweb_execute_request_in_safty_mode(
     int new_socket,
-    int time_out,
-    struct CwebHttpResponse *(*request_handler)(struct CwebHttpRequest *request)
-)
-{
+    int function_timeout,
+    struct CwebHttpResponse *(*request_handler)(struct CwebHttpRequest *request),
+    bool use_static,
+    bool use_cache){
     cweb_print("Creating a new process\n");
     pid_t pid = fork();
     if (pid == 0){
         // means that the process is the child
-        alarm(time_out);
-        private_cweb_execute_request(new_socket,request_handler);
+      
+        alarm(function_timeout);
+        private_cweb_execute_request(new_socket,request_handler,use_static,use_cache);
         cweb_print("Request executed\n");
         alarm(0);
         exit(0);
     }
-    
+
     else if (pid < 0){
         perror("Faluire to create a new process");
         exit(EXIT_FAILURE);
@@ -5461,38 +5749,39 @@ void private_cweb_execute_request_in_safty_mode(
 
     else{
         private_cweb_treat_response(new_socket);
+    
     }
     
-    close(new_socket);
-
-    cweb_print("Closed Conection with socket %d\n", new_socket);
+}
+void private_cweb_handle_child_termination(int signal) {
+    pid_t terminated_child;
+    int status;
+    while ((terminated_child = waitpid(-1, &status, WNOHANG)) > 0) {
+        total_requests--;
+    }
 }
 
-
-
-void cweb_run_server(
+void private_cweb_run_server_in_multiprocess(
     int port,
     struct CwebHttpResponse *(*request_handler)(struct CwebHttpRequest *request),
-    int timeout,
-    bool single_process){
+    int function_timeout,
+    double client_timeout,
+    int max_queue,
+    long max_requests,
+    bool use_static,
+    bool use_cache
+){
 
-    
-    //limpando lixo de memoria
-    actual_request = 0;
-
-
-    int server_fd, new_socket;
-    struct sockaddr_in address = {0};
-    int addrlen = sizeof(address);
+    int port_socket;
 
     // Creating socket file descriptor
-    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
-    {
+    if ((port_socket = socket(AF_INET, SOCK_STREAM, 0)) == 0){
         perror("Faluire to create socket");
         exit(EXIT_FAILURE);
     }
-
     
+    struct sockaddr_in address;
+    int addrlen = sizeof(address);
 
     // Configurando a estrutura de endereço do servidor
     address.sin_family = AF_INET;
@@ -5500,79 +5789,173 @@ void cweb_run_server(
     address.sin_port = htons(port);
 
     // Vinculando o socket à porta especificada
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0)
-    {
-        printf("Faluire to bind socket to port %d\n", port);
+    if (bind(port_socket, (struct sockaddr *)&address, sizeof(address)) < 0){
+        perror("Faluire to bind socket");
         return;
     }
-
     
+
+
     // Waiting for connections
-    if (listen(server_fd, 1000) < 0)
+    if (listen(port_socket, max_queue) < 0)
     {
         perror("Faluire to listen connections");
         exit(EXIT_FAILURE);
     }
-
-    //creating the static file
-    #ifndef CWEB_NO_STATIC
-        #ifdef __linux__
-             mkdir("static",0777);
-        #elif _WIN32
-            _mkdir("static");
-        #endif
-    #endif
-
     
 
-
+    // Main loop
     printf("Sever is running on port:%d\n", port);
 
-    while (1)
-    {
-        actual_request++;
 
- 
+
+    bool informed_mensage= false;
+    while (true)
+    {
+
+        if(total_requests >= max_requests){
+
+            if(!informed_mensage){
+                printf("max requests reached\n");
+                informed_mensage = true;
+            }
+
+            continue;
+        }
+
+        cweb_print("total request  runing %li\n",total_requests);
+
+        informed_mensage = false;
+        actual_request++;
+        total_requests++;
+
         // Accepting a new connection in every socket
-        if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0){
+        int client_socket = accept(
+            port_socket,
+            (struct sockaddr *)&address, 
+            (socklen_t *)&addrlen
+        );
+
+
+        cweb_print("----------------------------------------\n");
+        cweb_print("Executing request:%lld\n", actual_request);
+        cweb_print("Socket: %d\n", client_socket);
+
+
+        if (client_socket <  0){
             perror("Faluire to accept connection");
             exit(EXIT_FAILURE);
         }
-        struct timeval timer;
-        timer.tv_sec = timeout-0.2;  // tempo em segundos
-        timer.tv_usec =0;  //
+
+        pid_t pid = fork();
+        if (pid == 0){
+            
+            // creates an new socket and parse the request to the new socket
+            int new_socket = dup(client_socket);
+
+            struct timeval timer1;
+            timer1.tv_sec =  0;
+            timer1.tv_usec =  0100000;
+            setsockopt(new_socket, SOL_SOCKET, SO_RCVTIMEO, &timer1, sizeof(timer1));
 
 
-        setsockopt(new_socket, SOL_SOCKET, SO_RCVTIMEO, &timer, sizeof(timer));
+            char buffer[1];
+            ssize_t peek_result = recv(new_socket, buffer, 1, MSG_PEEK);
 
-        
-        cweb_print("----------------------------------------\n");
-        cweb_print("Executing request:%lld\n", actual_request);
-        cweb_print("Socket: %d\n", new_socket);
+            if (peek_result <= 0) {
+                cweb_print("peek: %li\n",peek_result);
+                cweb_print("Conection closed By the  Client\n");
+                close(new_socket);  // Fechar o socket do cliente
+                exit(0);
+                continue;
+            }
+
+            struct timeval timer2;
+            long seconds =  (long)client_timeout;
+            timer2.tv_sec =  seconds ;  // tempo em segundos
+            timer2.tv_usec =(long)((client_timeout - seconds) * 1000000);
+            setsockopt(new_socket, SOL_SOCKET, SO_RCVTIMEO, &timer2, sizeof(timer2));
 
 
-        if (single_process){
-          
-            private_cweb_execute_request(new_socket, request_handler);
+            private_cweb_execute_request_in_safty_mode(
+                new_socket,
+                function_timeout,
+                request_handler,
+                use_static,
+                use_cache
+            );
+
             close(new_socket);
-      
-
             cweb_print("Closed Conection with socket %d\n", new_socket);
-            #ifdef CWEB_ONCE
-                        return;
-            #endif
+            exit(0);
+        }
+
+
+        else if (pid < 0){
+
+            perror("Faluire to create a new process");
+            exit(EXIT_FAILURE);
         }
 
         else{
-            private_cweb_execute_request_in_safty_mode(
-                new_socket,
-                timeout,
-                request_handler
-                );
+            close(client_socket);
+            cweb_print("Closed Conection with socket %d\n", client_socket);
+            //make the parent process ignore the SIGCHLD signal
+            signal(SIGCHLD, private_cweb_handle_child_termination);
+            continue;
         }
-
+        
+  
     }
-   
 }
 
+
+struct CwebSever * newCwebSever(int port , struct CwebHttpResponse *(*request_handler)(struct CwebHttpRequest *request)){
+    struct CwebSever *self = (struct  CwebSever*) malloc(sizeof (struct CwebSever));
+    self->port = port;
+    self->function_timeout = 30;
+    self->client_timeout = 5;
+    self->max_queue = 100;
+    self->single_process = false;
+    self->max_requests = 1000;
+
+    self->use_static = true;
+    self->use_cache = true;
+    
+    self->request_handler = request_handler;
+    self->start = private_cweb_run_sever;
+    self->free = private_cweb_free_sever;
+    return self;
+}
+
+
+void private_cweb_run_sever(struct  CwebSever *self){
+    if (self->single_process){
+
+        private_cweb_run_server_in_single_process(
+            self->port,
+            self->request_handler,
+            self->client_timeout,
+            self->max_queue,
+            self->use_static,
+            self->use_cache
+        );
+    }
+
+    else{
+        private_cweb_run_server_in_multiprocess(
+            self->port,
+            self->request_handler,
+            self->function_timeout,
+            self->client_timeout,
+            self->max_queue,
+            self->max_requests,
+            self->use_static,
+            self->use_cache
+        );
+    }
+}
+void private_cweb_free_sever(struct CwebSever *self){
+    free(self);
+}
 #endif

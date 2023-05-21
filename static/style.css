@@ -1,8 +1,10 @@
 body{
-      background-image: url('wallpaper.jpg');
+        
+        background-image: url("smart-cache='wallpaper.jpg'");
         background-repeat: no-repeat;
         background-size: cover;
         color: white;
+
 }
 a{
     color: white;
