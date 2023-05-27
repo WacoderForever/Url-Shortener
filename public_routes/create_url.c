@@ -19,7 +19,7 @@ struct CwebHttpResponse * create_url(struct CwebHttpRequest *request){
     }
     char *token = create_randon_url_token(url);
 
-    char *host =request->get_header(request,"Host");
+    char *host ="https://url.kattit.com/";
 
 
     char full_link[30];

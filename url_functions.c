@@ -35,8 +35,10 @@ char *create_randon_url_token(char *url){
     char *token;
     //ensure its not equal to other token
 
-    char formated_url[2000];
-
+    char formated_url[5000];
+    if(strlen(url)>5000){
+        return NULL;
+    }
     if(dtw_starts_with(url,"http://") || dtw_starts_with(url,"https://")){
         sprintf(formated_url,"%s",url);
     }else{
